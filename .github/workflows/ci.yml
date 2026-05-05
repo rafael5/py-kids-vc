@@ -1,0 +1,97 @@
+name: kids-vc CI
+
+# Pure-Python tests for kids-vc + ZWR merge driver. No VistA container required.
+#
+# Runs:
+#   - Round-trip every .kid fixture in src/kids_vc/fixtures/
+#   - ZWR 3-way merge driver test suite (7 cases)
+#   - XPDK2VC behavioral-contract tests
+#   - Import / syntax check
+
+on:
+  push:
+    branches:
+      - main
+      - 'kids-vc/**'
+  pull_request:
+
+jobs:
+  roundtrip:
+    name: Round-trip every .kid fixture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e .
+      - name: Round-trip all fixtures
+        run: |
+          fail=0
+          for f in src/kids_vc/fixtures/*.kid; do
+            echo "--- $(basename "$f") ---"
+            if ! kids-vc roundtrip "$f"; then
+              fail=1
+            fi
+          done
+          exit $fail
+      - name: Decompose sanity (every fixture produces non-empty output)
+        run: |
+          for f in src/kids_vc/fixtures/*.kid; do
+            name=$(basename "$f" .kid)
+            outdir="/tmp/ci-decompose-$name"
+            rm -rf "$outdir"
+            kids-vc decompose "$f" "$outdir"
+            file_count=$(find "$outdir" -type f | wc -l)
+            if [ "$file_count" -lt 2 ]; then
+              echo "FAIL: $name decompose produced only $file_count files" >&2
+              exit 1
+            fi
+            echo "OK: $name → $file_count files"
+          done
+
+  zwr-merge:
+    name: ZWR merge driver tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e .
+      - name: Run zwr_merge test suite
+        run: python3 tests/test_zwr_merge.py
+
+  xpdk2vc-compat:
+    name: XPDK2VC behavioral-contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: pip install -e .
+      - name: Run XPDK2VC compat suite
+        run: python3 tests/test_xpdk2vc_compat.py
+
+  lint-check:
+    name: Lint & import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: |
+          python3 -m py_compile src/kids_vc/_impl.py
+          python3 -m py_compile src/kids_vc/merge.py
+          python3 -m py_compile src/kids_vc/cli.py
+      - name: Import kids_vc — ensure module loads clean
+        run: |
+          pip install -e .
+          python3 -c "import kids_vc; print('kids_vc imported, version', kids_vc.__version__)"
+          python3 -c "from kids_vc import merge; print('kids_vc.merge imported')"
