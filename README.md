@@ -1,5 +1,13 @@
 # kids-vc
 
+> ⚠️ **ARCHIVED 2026-07-04 — superseded by [v-pkg](https://github.com/vista-forge/v-pkg).**
+> The Go port carries every capability here — parse / decompose / assemble /
+> roundtrip / canonicalize, DD-embedded MUMPS extraction, and the
+> `kids-vc-merge` ZWR merge driver (`v-pkg merge`) — plus build / install /
+> verify / back-out over a live engine. It was validated byte-identical to
+> this tool across the WorldVistA corpus (100% round-trip). This repo remains
+> as the validated Python reference oracle; no further development.
+
 Version-control tool for **VistA KIDS** (Kernel Installation and Distribution System) distribution files. Decompose `.KID` patches into per-component files for git-tracking; reassemble back to `.KID` for deployment.
 
 ## What it does
